@@ -3,6 +3,7 @@ import unittest
 import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
+import subprocess
 
 #
 # Preform
@@ -25,8 +26,8 @@ It performs a simple thresholding on the input volume and optionally captures a 
 """
     self.parent.helpText += self.getDefaultModuleDocumentationLink()
     self.parent.acknowledgementText = """
-This file was originally developed by Jean-Christophe Fillion-Robin, Kitware Inc.
-and Steve Pieper, Isomics, Inc. and was partially funded by NIH grant 3P41RR013218-12S1.
+This extension was originally developed by Jan Witowski M.D. (jwitos@gmail.com)
+Paon Medical / Massachusetts General Hospital and Harvard Medical School
 """ # replace with organization, grant and thanks.
 
 #
@@ -47,7 +48,7 @@ class PreformWidget(ScriptedLoadableModuleWidget):
     # Parameters Area
     #
     parametersCollapsibleButton = ctk.ctkCollapsibleButton()
-    parametersCollapsibleButton.text = "Parameters"
+    parametersCollapsibleButton.text = "Open segmented region in PreForm"
     self.layout.addWidget(parametersCollapsibleButton)
 
     # Layout within the dummy collapsible button
@@ -57,7 +58,7 @@ class PreformWidget(ScriptedLoadableModuleWidget):
     # input volume selector
     #
     self.inputSelector = slicer.qMRMLNodeComboBox()
-    self.inputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
+    self.inputSelector.nodeTypes = ["vtkMRMLSegmentationNode"]
     self.inputSelector.selectNodeUponCreation = True
     self.inputSelector.addEnabled = False
     self.inputSelector.removeEnabled = False
@@ -66,54 +67,29 @@ class PreformWidget(ScriptedLoadableModuleWidget):
     self.inputSelector.showChildNodeTypes = False
     self.inputSelector.setMRMLScene( slicer.mrmlScene )
     self.inputSelector.setToolTip( "Pick the input to the algorithm." )
-    parametersFormLayout.addRow("Input Volume: ", self.inputSelector)
+    parametersFormLayout.addRow("Segmentation: ", self.inputSelector)
 
-    #
-    # output volume selector
-    #
-    self.outputSelector = slicer.qMRMLNodeComboBox()
-    self.outputSelector.nodeTypes = ["vtkMRMLScalarVolumeNode"]
-    self.outputSelector.selectNodeUponCreation = True
-    self.outputSelector.addEnabled = True
-    self.outputSelector.removeEnabled = True
-    self.outputSelector.noneEnabled = True
-    self.outputSelector.showHidden = False
-    self.outputSelector.showChildNodeTypes = False
-    self.outputSelector.setMRMLScene( slicer.mrmlScene )
-    self.outputSelector.setToolTip( "Pick the output to the algorithm." )
-    parametersFormLayout.addRow("Output Volume: ", self.outputSelector)
+    # PreForm path
+    self.preformPath = ctk.ctkPathLineEdit()
+    parametersFormLayout.addRow("Path to PreForm executable: ", self.preformPath)
 
-    #
-    # threshold value
-    #
-    self.imageThresholdSliderWidget = ctk.ctkSliderWidget()
-    self.imageThresholdSliderWidget.singleStep = 0.1
-    self.imageThresholdSliderWidget.minimum = -100
-    self.imageThresholdSliderWidget.maximum = 100
-    self.imageThresholdSliderWidget.value = 0.5
-    self.imageThresholdSliderWidget.setToolTip("Set threshold value for computing the output image. Voxels that have intensities lower than this value will set to zero.")
-    parametersFormLayout.addRow("Image threshold", self.imageThresholdSliderWidget)
-
-    #
-    # check box to trigger taking screen shots for later use in tutorials
-    #
-    self.enableScreenshotsFlagCheckBox = qt.QCheckBox()
-    self.enableScreenshotsFlagCheckBox.checked = 0
-    self.enableScreenshotsFlagCheckBox.setToolTip("If checked, take screen shots for tutorials. Use Save Data to write them to disk.")
-    parametersFormLayout.addRow("Enable Screenshots", self.enableScreenshotsFlagCheckBox)
+    # PreForm start flags
+    self.enableAutoRepairCheckBox = qt.QCheckBox()
+    self.enableAutoRepairCheckBox.checked = 1
+    parametersFormLayout.addRow("Auto Repair on PreForm load", self.enableAutoRepairCheckBox)
 
     #
     # Apply Button
     #
     self.applyButton = qt.QPushButton("Apply")
-    self.applyButton.toolTip = "Run the algorithm."
+    self.applyButton.toolTip = "Start PreForm."
     self.applyButton.enabled = False
     parametersFormLayout.addRow(self.applyButton)
 
     # connections
     self.applyButton.connect('clicked(bool)', self.onApplyButton)
     self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
-    self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+    self.preformPath.connect('currentPathChanged(QString)', self.onSelect)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -124,14 +100,13 @@ class PreformWidget(ScriptedLoadableModuleWidget):
   def cleanup(self):
     pass
 
+  # Activate when input segmentation node selected and PreForm path specified
   def onSelect(self):
-    self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
+    self.applyButton.enabled = self.inputSelector.currentNode() and self.preformPath.currentPath
 
   def onApplyButton(self):
     logic = PreformLogic()
-    enableScreenshotsFlag = self.enableScreenshotsFlagCheckBox.checked
-    imageThreshold = self.imageThresholdSliderWidget.value
-    logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode(), imageThreshold, enableScreenshotsFlag)
+    logic.run(self.inputSelector.currentNode(), self.preformPath.currentPath)
 
 #
 # PreformLogic
@@ -174,24 +149,36 @@ class PreformLogic(ScriptedLoadableModuleLogic):
       return False
     return True
 
-  def run(self, inputVolume, outputVolume, imageThreshold, enableScreenshots=0):
+  def run(self, inputVolume, preformPath):
     """
     Run the actual algorithm
     """
 
-    if not self.isValidInputOutputData(inputVolume, outputVolume):
-      slicer.util.errorDisplay('Input volume is the same as output volume. Choose a different output volume.')
-      return False
-
     logging.info('Processing started')
+    exportPath = "D:\\"
 
-    # Compute the thresholded output volume using the Threshold Scalar Volume CLI module
-    cliParams = {'InputVolume': inputVolume.GetID(), 'OutputVolume': outputVolume.GetID(), 'ThresholdValue' : imageThreshold, 'ThresholdType' : 'Above'}
-    cliNode = slicer.cli.run(slicer.modules.thresholdscalarvolume, None, cliParams, wait_for_completion=True)
+    # Export to STL
+    slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
+      exportPath,
+      inputVolume,
+      None
+    )
 
-    # Capture screenshot
-    if enableScreenshots:
-      self.takeScreenshot('PreformTest-Start','MyScreenshot',-1)
+    # D:\Programs\Formlabs\PreForm\PreForm.exe
+    # Get paths to STL models
+    stlFilename = "Segmentation_Angio_Segment_1.stl"
+    stlFilepath = exportPath + stlFilename
+
+    # Process params
+    params = ""
+    params += " --silentRepair"
+    params += " --diagnostic"
+
+    # Open Preform
+    logging.info("Opening PreForm")
+    #p = subprocess.check_output(preformPath + " " + stlFilepath + params)
+    p = subprocess.Popen(preformPath + " " + stlFilepath + params)
+    logging.info(p)
 
     logging.info('Processing completed')
 
