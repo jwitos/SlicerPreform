@@ -22,7 +22,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
   def icon(self):
     # It should not be necessary to modify this method
-    iconPath = os.path.join(os.path.dirname(__file__), 'SegmentEditorEffect.png')
+    iconPath = "D:\\Formlabs.jpg"
+    #iconPath = os.path.join(os.path.dirname(__file__), 'SegmentEditorEffect.png')
     if os.path.exists(iconPath):
       return qt.QIcon(iconPath)
     return qt.QIcon()
@@ -34,18 +35,6 @@ for 3D printing setup and management.
 """
 
   def setupOptionsFrame(self):
-
-     # Object scale slider
-    self.objectScaleMmSlider = slicer.qMRMLSliderWidget()
-    self.objectScaleMmSlider.setMRMLScene(slicer.mrmlScene)
-    self.objectScaleMmSlider.quantity = "length" # get unit, precision, etc. from MRML unit node
-    self.objectScaleMmSlider.minimum = 0
-    self.objectScaleMmSlider.maximum = 10
-    self.objectScaleMmSlider.value = 2.0
-    self.objectScaleMmSlider.setToolTip('Increasing this value smooths the segmentation and reduces leaks. This is the sigma used for edge detection.')
-    self.scriptedEffect.addLabeledOptionsWidget("Object scale:", self.objectScaleMmSlider)
-    self.objectScaleMmSlider.connect('valueChanged(double)', self.updateMRMLFromGUI)
-
     # PreForm path
     self.preformPath = ctk.ctkPathLineEdit()
     self.scriptedEffect.addLabeledOptionsWidget("Preform Path:", self.preformPath)
@@ -65,18 +54,6 @@ for 3D printing setup and management.
   def createCursor(self, widget):
     # Turn off effect-specific cursor for this effect
     return slicer.util.mainWindow().cursor
-
-  def setMRMLDefaults(self):
-    self.scriptedEffect.setParameterDefault("ObjectScaleMm", 2.0)
-
-  def updateGUIFromMRML(self):
-    objectScaleMm = self.scriptedEffect.doubleParameter("ObjectScaleMm")
-    wasBlocked = self.objectScaleMmSlider.blockSignals(True)
-    self.objectScaleMmSlider.value = abs(objectScaleMm)
-    self.objectScaleMmSlider.blockSignals(wasBlocked)
-
-  def updateMRMLFromGUI(self):
-    self.scriptedEffect.setParameter("ObjectScaleMm", self.objectScaleMmSlider.value)
 
   def onApply(self):
     logging.info('Processing started')
