@@ -41,16 +41,22 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def setupOptionsFrame(self):
     # PreForm path
     self.preformPath = ctk.ctkPathLineEdit()
-    self.scriptedEffect.addLabeledOptionsWidget("Preform Path:", self.preformPath)
+    self.scriptedEffect.addLabeledOptionsWidget("Path to PreForm.exe:", self.preformPath)
 
     # Select segments
     self.mergeAllVisibleSegments = qt.QCheckBox()
     self.mergeAllVisibleSegments.checked = 0
+    self.mergeAllVisibleSegments.setToolTip("""If checked, you will merge all
+     visible segments into one object and export. If not, only selected
+     segment will be exported""")
     self.scriptedEffect.addLabeledOptionsWidget("Merge&export all visible segments:", self.mergeAllVisibleSegments)
 
     # PreForm start flags
     self.enableAutoRepairCheckBox = qt.QCheckBox()
     self.enableAutoRepairCheckBox.checked = 1
+    self.enableAutoRepairCheckBox.setToolTip("""If checked, exported model
+    will be automatically checked for structural errors and repaired
+    by PreForm at load""")
     self.scriptedEffect.addLabeledOptionsWidget("Auto Repair:", self.enableAutoRepairCheckBox)
 
     # Export button
@@ -83,15 +89,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return selectedSegmentID, segment.GetName()
 
   def onApply(self):
-    logging.info('Processing started')
-
-    # Get values of checkboxes
-    logging.info(self.mergeAllVisibleSegments.checked)
-    logging.info(self.enableAutoRepairCheckBox.checked)
-
-    # Get path in the input:
-    logging.info(self.preformPath.currentPath)
-
     # If exporting single selected element, get the segment ID and name
     if not self.mergeAllVisibleSegments.checked:
       segmentToExportID, segmentToExportName = self.getSegmentToExport()
@@ -132,17 +129,13 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       )
       stlFilepath = os.path.join(exportPath, (segmentationNodeName + "_" + segmentToExportName + ".stl"))
 
-    # Process params
-    params = ""
-    params += " --silentRepair"
-    params += " --diagnostic"
-
     # Open Preform
-    logging.info("Opening PreForm")
-    #p = subprocess.check_output(preformPath + " " + stlFilepath + params)
-    # Opening Preform commented out until rest is ready
     preformPath = self.preformPath.currentPath
-    p = subprocess.Popen([preformPath, stlFilepath, '--silentRepair', '--diagnostic'])
-    logging.info(p)
+    logging.info("Saving STL in:")
+    logging.info(stlFilepath)
+    if self.enableAutoRepairCheckBox.checked:
+      p = subprocess.Popen([preformPath, stlFilepath, '--silentRepair', '--diagnostic'])
+    else:
+      p = subprocess.Popen([preformPath, stlFilepath, '--diagnostic'])
 
-    logging.info('Processing completed')
+    logging.info(p)
