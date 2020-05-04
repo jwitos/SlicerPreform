@@ -64,30 +64,23 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # Turn off effect-specific cursor for this effect
     return slicer.util.mainWindow().cursor
 
-  def getSegmentsToExport(self):
-    # This method returns which segment(s) are going to be exported
-    # If "merge all" checkbox is set, then get all visible segments IDs
-    # If not, get currently selected (active segment)
+  def getSegmentToExport(self):
+    # This method returns a segment to export
+    # Return is a vtk Segment object
+    # To export, this has to be converted to vtkStringArray
 
-    if self.mergeAllVisibleSegments.checked:
-      # Get list of visible segment IDs
-      segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
-      visibleSegmentIds = vtk.vtkStringArray()
-      segmentationNode.GetDisplayNode().GetVisibleSegmentIDs(visibleSegmentIds)
-      logging.info("Visible segments:")
-      logging.info(visibleSegmentIds.GetNumberOfValues())
-      if visibleSegmentIds.GetNumberOfValues() == 0:
-        logging.info("No visible segments")
-        return
-      logging.info("First value:")
-      logging.info(visibleSegmentIds.GetValue(0))
-      return visibleSegmentIds
-    else:
-      # Currently selected (active) segment
-      segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
-      segmentEditorNode = segmentEditorWidget.mrmlSegmentEditorNode()
-      selectedSegment = segmentEditorNode.GetSelectedSegmentID()
-      return selectedSegment
+    # Currently selected (active) segment
+    segmentEditorWidget = slicer.modules.segmenteditor.widgetRepresentation().self().editor
+    segmentEditorNode = segmentEditorWidget.mrmlSegmentEditorNode()
+    selectedSegmentID = segmentEditorNode.GetSelectedSegmentID()
+
+    # Get segment as a VTK object
+    segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
+    segmentationNodeName = segmentationNode.GetName()
+    segmentation = segmentationNode.GetSegmentation()
+    segment = segmentation.GetSegment(selectedSegmentID)
+
+    return selectedSegmentID, segment.GetName()
 
   def onApply(self):
     logging.info('Processing started')
@@ -99,29 +92,21 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     # Get path in the input:
     logging.info(self.preformPath.currentPath)
 
-    # Get segments to export
-    segmentsToExport = self.getSegmentsToExport()
-    logging.info("Segments to export: ")
-    logging.info(segmentsToExport)
+    # If exporting single selected element, get the segment ID and name
+    if not self.mergeAllVisibleSegments.checked:
+      segmentToExportID, segmentToExportName = self.getSegmentToExport()
+      segmentVtkStringArray = vtk.vtkStringArray()
+      segmentVtkStringArray.InsertNextValue(segmentToExportID)
 
     # STL will be exported to a current working directory
     exportPath = os.getcwd()
 
     # Model from merged objects will be saved under segmentation node name
+    # From single segments, they will get a "SegmentationNodeName_SegmentName.stl" format
     segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
     segmentationNodeName = segmentationNode.GetName()
 
     # Export segmentation nodes/segments to STL
-    """slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
-      destinationFolder=exportPath,
-      segmentationNode=segmentationNode,
-      segmentIds=None,
-      fileFormat="STL",
-      lps=True,
-      sizeScale=1.0,
-      merge=False
-    )"""
-
     if self.mergeAllVisibleSegments.checked:
       # All segments
       slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
@@ -135,15 +120,17 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       )
       stlFilepath = os.path.join(exportPath, (segmentationNodeName + '.stl'))
     else:
+      # Only selected segment
       slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
         exportPath,
         segmentationNode,
-        segmentsToExport,
+        segmentVtkStringArray,
         "STL",
         True,
         1.0,
         False
       )
+      stlFilepath = os.path.join(exportPath, (segmentationNodeName + "_" + segmentToExportName + ".stl"))
 
     # Process params
     params = ""
