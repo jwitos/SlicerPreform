@@ -106,13 +106,11 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
 
     # STL will be exported to a current working directory
     exportPath = os.getcwd()
-    logging.info("Exporting to")
-    logging.info(exportPath)
 
-    stlFilename = "PreForm_Temporary.stl"
-    stlFilepath = os.path.join(exportPath, stlFilename)
-
+    # Model from merged objects will be saved under segmentation node name
     segmentationNode = self.scriptedEffect.parameterSetNode().GetSegmentationNode()
+    segmentationNodeName = segmentationNode.GetName()
+
     # Export segmentation nodes/segments to STL
     """slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
       destinationFolder=exportPath,
@@ -135,6 +133,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
         1.0,
         True
       )
+      stlFilepath = os.path.join(exportPath, (segmentationNodeName + '.stl'))
     else:
       slicer.vtkSlicerSegmentationsModuleLogic.ExportSegmentsClosedSurfaceRepresentationToFiles(
         exportPath,
@@ -155,9 +154,8 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     logging.info("Opening PreForm")
     #p = subprocess.check_output(preformPath + " " + stlFilepath + params)
     # Opening Preform commented out until rest is ready
-    subprocessCommand = f"{self.preformPath.currentPath} '{stlFilepath}' {params}"
-    logging.info(subprocessCommand)
-    p = subprocess.Popen(subprocessCommand)
+    preformPath = self.preformPath.currentPath
+    p = subprocess.Popen([preformPath, stlFilepath, '--silentRepair', '--diagnostic'])
     logging.info(p)
 
     logging.info('Processing completed')
