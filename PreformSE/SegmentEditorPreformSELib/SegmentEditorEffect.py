@@ -59,6 +59,12 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     by PreForm at load""")
     self.scriptedEffect.addLabeledOptionsWidget("Auto Repair:", self.enableAutoRepairCheckBox)
 
+    # Path to save STL file
+    # It's necessary to have a saved STL file for this
+    self.stlExportPath = ctk.ctkPathLineEdit()
+    self.stlExportPath.setCurrentPath(os.getcwd())
+    self.scriptedEffect.addLabeledOptionsWidget("Path to store STL files:", self.stlExportPath)
+
     # Export button
     self.applyButton = qt.QPushButton("Apply")
     self.applyButton.objectName = self.__class__.__name__ + 'Apply'
@@ -96,7 +102,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
       segmentVtkStringArray.InsertNextValue(segmentToExportID)
 
     # STL will be exported to a current working directory
-    exportPath = os.getcwd()
+    exportPath = self.stlExportPath.currentPath
 
     # Model from merged objects will be saved under segmentation node name
     # From single segments, they will get a "SegmentationNodeName_SegmentName.stl" format
