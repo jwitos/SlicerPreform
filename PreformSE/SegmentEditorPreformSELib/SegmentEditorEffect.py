@@ -139,9 +139,16 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     preformPath = self.preformPath.currentPath
     logging.info("Saving STL in:")
     logging.info(stlFilepath)
+
+    # Create a copy of the environment
+    # Without this, qt conflict blocks Preform from starting
+    newQtPluginPath = "".join(preformPath.split(".")[:-1])
+    my_env = os.environ.copy()
+    my_env["QT_PLUGIN_PATH"] = newQtPluginPath
+
     if self.enableAutoRepairCheckBox.checked:
-      p = subprocess.Popen([preformPath, stlFilepath, '--silentRepair', '--diagnostic'])
+      p = subprocess.Popen([preformPath, stlFilepath, '--silentRepair', '--diagnostic'], env=my_env, shell=True)
     else:
-      p = subprocess.Popen([preformPath, stlFilepath, '--diagnostic'])
+      p = subprocess.Popen([preformPath, stlFilepath, '--diagnostic'], env=my_env, shell=True)
 
     logging.info(p)
