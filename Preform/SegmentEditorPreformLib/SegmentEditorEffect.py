@@ -9,7 +9,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   to the PreForm (Formlabs) 3D printing software"""
 
   def __init__(self, scriptedEffect):
-    scriptedEffect.name = 'PreformSE'
+    scriptedEffect.name = 'Preform'
     scriptedEffect.perSegment = False # this effect operates on all segments at once (not on a single selected segment)
     scriptedEffect.requireSegments = True # this effect requires segment(s) existing in the segmentation
     AbstractScriptedSegmentEditorEffect.__init__(self, scriptedEffect)
@@ -95,6 +95,7 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return selectedSegmentID, segment.GetName()
 
   def onApply(self):
+    logging.info("Wyczyszczone")
     # If exporting single selected element, get the segment ID and name
     if not self.mergeAllVisibleSegments.checked:
       segmentToExportID, segmentToExportName = self.getSegmentToExport()

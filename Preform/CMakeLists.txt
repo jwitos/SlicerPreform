@@ -1,13 +1,16 @@
+
 #-----------------------------------------------------------------------------
-set(MODULE_NAME Preform)
+set(MODULE_NAME SegmentEditorPreform)
 
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  ${MODULE_NAME}Lib/__init__.py
+  ${MODULE_NAME}Lib/SegmentEditorEffect.py
   )
 
 set(MODULE_PYTHON_RESOURCES
-  Resources/Icons/${MODULE_NAME}.png
+  ${MODULE_NAME}Lib/SegmentEditorEffect.png
   )
 
 #-----------------------------------------------------------------------------
@@ -20,11 +23,10 @@ slicerMacroBuildScriptedModule(
 
 #-----------------------------------------------------------------------------
 if(BUILD_TESTING)
-
   # Register the unittest subclass in the main script as a ctest.
   # Note that the test will also be available at runtime.
-  slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
+  #slicer_add_python_unittest(SCRIPT ${MODULE_NAME}.py)
 
   # Additional build-time testing
-  add_subdirectory(Testing)
+  #add_subdirectory(Testing)
 endif()

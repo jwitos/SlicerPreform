@@ -4,7 +4,7 @@ import vtk, qt, ctk, slicer
 from slicer.ScriptedLoadableModule import *
 import logging
 
-class SegmentEditorPreformSE(ScriptedLoadableModule):
+class SegmentEditorPreform(ScriptedLoadableModule):
   """Uses ScriptedLoadableModule base class, available at:
   https://github.com/Slicer/Slicer/blob/master/Base/Python/slicer/ScriptedLoadableModule.py
   """
@@ -12,7 +12,7 @@ class SegmentEditorPreformSE(ScriptedLoadableModule):
   def __init__(self, parent):
     import string
     ScriptedLoadableModule.__init__(self, parent)
-    self.parent.title = "SegmentEditorPreformSE"
+    self.parent.title = "SegmentEditorPreform"
     self.parent.categories = ["Segmentation"]
     self.parent.dependencies = ["Segmentations"]
     self.parent.contributors = ["Andras Lasso (PerkLab)"]
@@ -29,7 +29,7 @@ class SegmentEditorPreformSE(ScriptedLoadableModule):
     instance.setPythonSource(effectFilename.replace('\\','/'))
     instance.self().register()
 
-class SegmentEditorPreformSETest(ScriptedLoadableModuleTest):
+class SegmentEditorPreformTest(ScriptedLoadableModuleTest):
   """
   This is the test case for your scripted module.
   Uses ScriptedLoadableModuleTest base class, available at:
@@ -45,18 +45,18 @@ class SegmentEditorPreformSETest(ScriptedLoadableModuleTest):
     """Run as few or as many tests as needed here.
     """
     self.setUp()
-    self.test_PreformSE1()
+    self.test_Preform1()
 
-  def test_PreformSE1(self):
+  def test_Preform1(self):
     """
     Basic automated test of the segmentation method:
     - Create segmentation by placing sphere-shaped seeds
     - Run segmentation
     - Verify results using segment statistics
-    The test can be executed from SelfTests module (test name: SegmentEditorPreformSE)
+    The test can be executed from SelfTests module (test name: SegmentEditorPreform)
     """
 
-    self.delayDisplay("Starting test_PreformSE1")
+    self.delayDisplay("Starting test_Preform1")
 
     import vtkSegmentationCorePython as vtkSegmentationCore
     import vtkSlicerSegmentationsModuleLogicPython as vtkSlicerSegmentationsModuleLogic
@@ -108,7 +108,7 @@ class SegmentEditorPreformSETest(ScriptedLoadableModuleTest):
 
     ##################################
     self.delayDisplay("Run segmentation")
-    segmentEditorWidget.setActiveEffectByName("PreformSE")
+    segmentEditorWidget.setActiveEffectByName("Preform")
     effect = segmentEditorWidget.activeEffect()
     effect.setParameter("ObjectScaleMm", 3.0)
     effect.self().onApply()
@@ -135,4 +135,4 @@ class SegmentEditorPreformSETest(ScriptedLoadableModuleTest):
     self.assertEqual( round(segStatLogic.statistics["Tumor","LM volume cc"]), 16)
     self.assertEqual( round(segStatLogic.statistics["Background","LM volume cc"]), 3010)
 
-    self.delayDisplay('test_PreformSE1 passed')
+    self.delayDisplay('test_Preform1 passed')
