@@ -2,6 +2,8 @@ import os
 import vtk, qt, ctk, slicer
 import logging
 import subprocess
+import platform
+import winreg
 from SegmentEditorEffects import *
 
 class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
@@ -41,6 +43,18 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
   def setupOptionsFrame(self):
     # PreForm path
     self.preformPath = ctk.ctkPathLineEdit()
+    if platform.system() == 'Windows':
+      try:
+        key_to_read = r'SOFTWARE\WOW6432Node\PreForm'
+        reg = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+        k = winreg.OpenKey(reg, key_to_read)
+        value, regtype = winreg.QueryValueEx(k, 'Path')
+        self.preformPath.currentPath = value + '\PreForm.exe'
+      except WindowsError as e:
+        logging.info(e)
+    elif platform.system() == 'Darwin':
+      self.preformPath.currentPath = '/Applications/PreForm.app/Contents/MacOS/PreForm'
+
     self.scriptedEffect.addLabeledOptionsWidget("Path to PreForm.exe:", self.preformPath)
 
     # Select segments
@@ -95,7 +109,6 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return selectedSegmentID, segment.GetName()
 
   def onApply(self):
-    logging.info("Wyczyszczone")
     # If exporting single selected element, get the segment ID and name
     if not self.mergeAllVisibleSegments.checked:
       segmentToExportID, segmentToExportName = self.getSegmentToExport()
