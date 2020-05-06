@@ -109,6 +109,10 @@ class SegmentEditorEffect(AbstractScriptedSegmentEditorEffect):
     return selectedSegmentID, segment.GetName()
 
   def onApply(self):
+    if not os.path.exists(self.preformPath.currentPath):
+      qt.QMessageBox.warning(slicer.util.mainWindow(), 'PreForm', f'PreForm executable not found at {self.preformPath.currentPath}')
+      return
+
     # If exporting single selected element, get the segment ID and name
     if not self.mergeAllVisibleSegments.checked:
       segmentToExportID, segmentToExportName = self.getSegmentToExport()
